@@ -1589,7 +1589,6 @@ async function loadMonthlyStats() {
 }
 
 
-// 更新 displayMonthlyStats 函數以支援新班別統計
 function displayMonthlyStats(shifts) {
     const statsGrid = document.getElementById('stats-grid');
     if (!statsGrid) return;
@@ -1623,7 +1622,7 @@ function displayMonthlyStats(shifts) {
     
     const html = `
         <div class="stat-card">
-            <div class="stat-label">${t('SHIFT_STATS_TOTAL')}</div>
+            <div class="stat-label">本月總排班</div>
             <div class="stat-value">${stats.total}</div>
         </div>
         <div class="stat-card">
@@ -1642,7 +1641,6 @@ function displayMonthlyStats(shifts) {
             <div class="stat-label">過年假</div>
             <div class="stat-value" style="color: #f44336;">${stats.cnyLeave}</div>
         </div>
-        <!-- ⭐ 新增國定假日統計 -->
         <div class="stat-card">
             <div class="stat-label">國定假日</div>
             <div class="stat-value" style="color: #ff9800;">${stats.nationalHoliday}</div>
@@ -1653,7 +1651,7 @@ function displayMonthlyStats(shifts) {
         </div>
         ${stats.custom > 0 ? `
         <div class="stat-card">
-            <div class="stat-label">${t('SHIFT_TYPE_CUSTOM')}</div>
+            <div class="stat-label">自訂</div>
             <div class="stat-value" style="color: #fbc02d;">${stats.custom}</div>
         </div>
         ` : ''}
@@ -1818,41 +1816,54 @@ function displayShiftDistribution(shifts) {
         if (distributionContainer) distributionContainer.innerHTML = '';
         return;
     }
-    
+
+    // 員工排班統計
     const employeeStats = {};
-    const shiftTypeStats = { 
-        '早班': 0, 
-        '中班': 0, 
-        '晚班': 0, 
-        '全日班': 0,
-        '排休': 0,
-        '自訂': 0
+
+    // 廚房班別統計
+    const kitchenStats = {
+        '廚房A班': 0, '廚房B班': 0, '廚房C班': 0,
+        '廚房D班': 0, '廚房E班': 0, '廚房F班': 0,
+        '廚房G班': 0, '廚房H班': 0, '廚房I班': 0
     };
-    
+
+    // 外場班別統計
+    const floorStats = {
+        '外場A1班': 0, '外場A2班': 0, '外場A3班': 0, '外場A4班': 0,
+        '外場B1班': 0, '外場B2班': 0, '外場B3班': 0, '外場B4班': 0
+    };
+
+    // 假別統計
+    const leaveStats = {
+        '年假': 0, '過年假': 0, '國定假日': 0, '排休': 0, '自訂': 0
+    };
+
     shifts.forEach(shift => {
+        // 員工統計
         if (!employeeStats[shift.employeeName]) {
             employeeStats[shift.employeeName] = 0;
         }
         employeeStats[shift.employeeName]++;
-        
-        if (shiftTypeStats[shift.shiftType] !== undefined) {
-            shiftTypeStats[shift.shiftType]++;
+
+        // 班別分類
+        if (shift.shiftType in kitchenStats) {
+            kitchenStats[shift.shiftType]++;
+        } else if (shift.shiftType in floorStats) {
+            floorStats[shift.shiftType]++;
+        } else if (shift.shiftType in leaveStats) {
+            leaveStats[shift.shiftType]++;
         }
     });
-    
+
+    // 員工分布長條圖
     const maxCount = Math.max(...Object.values(employeeStats), 1);
-    
-    let html = '<div class="distribution-section">';
-    html += '<h3 class="distribution-title">📊 本月員工排班分布</h3>';
-    html += '<div class="distribution-bars">';
-    
     const sortedEmployees = Object.entries(employeeStats)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 15);
-    
-    sortedEmployees.forEach(([name, count]) => {
+
+    let employeeBars = sortedEmployees.map(([name, count]) => {
         const percentage = (count / maxCount * 100).toFixed(0);
-        html += `
+        return `
             <div class="distribution-bar-item">
                 <div class="distribution-bar-label">${name}</div>
                 <div class="distribution-bar-container">
@@ -1862,44 +1873,67 @@ function displayShiftDistribution(shifts) {
                 </div>
             </div>
         `;
-    });
-    
-    html += '</div></div>';
-    
-    html += '<div class="distribution-section">';
-    html += '<h3 class="distribution-title">🎨 本月班別分布</h3>';
-    html += '<div class="shift-type-distribution">';
-    
-    const totalShifts = Object.values(shiftTypeStats).reduce((a, b) => a + b, 0);
-    const shiftTypeColors = {
-        '早班': '#ff9800',
-        '中班': '#2196f3',
-        '晚班': '#9c27b0',
-        '全日班': '#4caf50',
-        '排休': '#9e9e9e',
-        '自訂': '#fbc02d'
+    }).join('');
+
+    // 通用班別卡片渲染
+    function renderShiftTypeCards(statsObj, colorMap) {
+        const total = Object.values(statsObj).reduce((a, b) => a + b, 0);
+        return Object.entries(statsObj).map(([type, count]) => {
+            const percentage = total > 0 ? (count / total * 100).toFixed(1) : 0;
+            const color = colorMap[type] || '#9e9e9e';
+            return `
+                <div class="shift-type-stat">
+                    <div class="shift-type-stat-header">
+                        <span class="shift-type-label ${getShiftClass(type)}">${type}</span>
+                        <span class="shift-type-count">${count}</span>
+                    </div>
+                    <div class="shift-type-bar-container">
+                        <div class="shift-type-bar" style="width: ${percentage}%; background: ${color};"></div>
+                    </div>
+                    <div class="shift-type-percentage">${percentage}%</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const kitchenColors = {
+        '廚房A班': '#ff9800', '廚房B班': '#fb8c00', '廚房C班': '#f57c00',
+        '廚房D班': '#ef6c00', '廚房E班': '#e65100', '廚房F班': '#bf360c',
+        '廚房G班': '#ffd54f', '廚房H班': '#ffb300', '廚房I班': '#ff6f00'
     };
-    
-    Object.entries(shiftTypeStats).forEach(([type, count]) => {
-        const percentage = totalShifts > 0 ? (count / totalShifts * 100).toFixed(1) : 0;
-        const color = shiftTypeColors[type];
-        
-        html += `
-            <div class="shift-type-stat">
-                <div class="shift-type-stat-header">
-                    <span class="shift-type-label ${getShiftClass(type)}">${type}</span>
-                    <span class="shift-type-count">${count}</span>
-                </div>
-                <div class="shift-type-bar-container">
-                    <div class="shift-type-bar" style="width: ${percentage}%; background: ${color};"></div>
-                </div>
-                <div class="shift-type-percentage">${percentage}%</div>
-            </div>
-        `;
-    });
-    
-    html += '</div></div>';
-    
+
+    const floorColors = {
+        '外場A1班': '#42a5f5', '外場A2班': '#2196f3', '外場A3班': '#1e88e5', '外場A4班': '#1565c0',
+        '外場B1班': '#64b5f6', '外場B2班': '#1976d2', '外場B3班': '#0d47a1', '外場B4班': '#0a3880'
+    };
+
+    const leaveColors = {
+        '年假': '#4caf50', '過年假': '#f44336', '國定假日': '#ff9800',
+        '排休': '#9e9e9e', '自訂': '#fbc02d'
+    };
+
+    const html = `
+        <div class="distribution-section">
+            <h3 class="distribution-title">本月員工排班分布</h3>
+            <div class="distribution-bars">${employeeBars}</div>
+        </div>
+
+        <div class="distribution-section">
+            <h3 class="distribution-title">廚房班別分布</h3>
+            <div class="shift-type-distribution">${renderShiftTypeCards(kitchenStats, kitchenColors)}</div>
+        </div>
+
+        <div class="distribution-section">
+            <h3 class="distribution-title">外場班別分布</h3>
+            <div class="shift-type-distribution">${renderShiftTypeCards(floorStats, floorColors)}</div>
+        </div>
+
+        <div class="distribution-section">
+            <h3 class="distribution-title">假別分布</h3>
+            <div class="shift-type-distribution">${renderShiftTypeCards(leaveStats, leaveColors)}</div>
+        </div>
+    `;
+
     distributionContainer.innerHTML = html;
 }
 
