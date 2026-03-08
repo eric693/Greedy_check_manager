@@ -1531,10 +1531,7 @@ function updateMonthDisplay() {
 
 function previousMonth() {
     currentMonth--;
-    if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-    }
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
     updateMonthDisplay();
     loadMonthlyStats();
     loadMonthlyShifts();
@@ -1543,10 +1540,7 @@ function previousMonth() {
 
 function nextMonth() {
     currentMonth++;
-    if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-    }
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     updateMonthDisplay();
     loadMonthlyStats();
     loadMonthlyShifts();
@@ -1562,6 +1556,7 @@ function goToToday() {
     loadMonthlyShifts();
     loadShiftDistribution();
 }
+
 
 async function loadMonthlyStats() {
     try {
@@ -2031,41 +2026,7 @@ function switchStatsTab(tabName) {
     document.getElementById(`stats-${tabName}`).style.display = 'block';
 }
 
-// ========== 統計載入入口 ==========
-
-
-
-function previousMonth() {
-    currentMonth--;
-    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    updateMonthDisplay();
-    loadMonthlyStats();
-    loadMonthlyShifts();
-    loadShiftDistribution();
-}
-
-function nextMonth() {
-    currentMonth++;
-    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    updateMonthDisplay();
-    loadMonthlyStats();
-    loadMonthlyShifts();
-    loadShiftDistribution();
-}
-
-function goToToday() {
-    const today = new Date();
-    currentYear = today.getFullYear();
-    currentMonth = today.getMonth();
-    updateMonthDisplay();
-    loadMonthlyStats();
-    loadMonthlyShifts();
-    loadShiftDistribution();
-}
-
 // ========== 月度統計卡片 ==========
-
-
 
 function displayMonthlyStatsKitchen(shifts) {
     const statsGrid = document.getElementById('stats-grid-kitchen');
