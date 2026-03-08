@@ -1509,7 +1509,7 @@ async function loadStats() {
     try {
         currentYear = new Date().getFullYear();
         currentMonth = new Date().getMonth();
-        
+
         updateMonthDisplay();
         await loadMonthlyStats();
         await loadMonthlyShifts();
@@ -1520,11 +1520,13 @@ async function loadStats() {
 }
 
 function updateMonthDisplay() {
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', 
-                        '7月', '8月', '9月', '10月', '11月', '12月'];
+    const monthNames = ['1月','2月','3月','4月','5月','6月',
+                        '7月','8月','9月','10月','11月','12月'];
     const displayText = `${currentYear}年${monthNames[currentMonth]}`;
-    const monthEl = document.getElementById('current-month');
-    if (monthEl) monthEl.textContent = displayText;
+    ['kitchen','floor'].forEach(type => {
+        const el = document.getElementById(`current-month-${type}`);
+        if (el) el.textContent = displayText;
+    });
 }
 
 function previousMonth() {
@@ -1566,22 +1568,21 @@ async function loadMonthlyStats() {
         const token = localStorage.getItem('sessionToken');
         const startDate = new Date(currentYear, currentMonth, 1);
         const endDate = new Date(currentYear, currentMonth + 1, 0);
-        
+
         const queryParams = new URLSearchParams({
             action: 'getShifts',
             token: token,
             startDate: formatDateYMD(startDate),
             endDate: formatDateYMD(endDate)
         });
-        
+
         const response = await fetch(`${apiUrl}?${queryParams}`);
         const data = await response.json();
-        
-        console.log('📊 月度統計:', data);
-        
+
         if (data.ok && data.data) {
             allMonthShifts = data.data;
-            displayMonthlyStats(data.data);
+            displayMonthlyStatsKitchen(data.data);
+            displayMonthlyStatsFloor(data.data);
         }
     } catch (error) {
         console.error('載入月度統計失敗:', error);
@@ -1662,17 +1663,14 @@ function displayMonthlyStats(shifts) {
 
 
 async function loadMonthlyShifts() {
-    const calendarGrid = document.getElementById('calendar-grid');
-    if (!calendarGrid) return;
-    
-    calendarGrid.innerHTML = '<div class="loading">載入月曆中</div>';
-    
-    try {
-        displayMonthCalendar(allMonthShifts);
-    } catch (error) {
-        console.error('載入月曆失敗:', error);
-        calendarGrid.innerHTML = '<div class="loading">載入失敗</div>';
-    }
+    displayMonthCalendar(
+        allMonthShifts.filter(s => s.shiftType.startsWith('廚房')),
+        'calendar-grid-kitchen'
+    );
+    displayMonthCalendar(
+        allMonthShifts.filter(s => s.shiftType.startsWith('外場')),
+        'calendar-grid-floor'
+    );
 }
 
 function displayMonthCalendar(shifts) {
@@ -2018,6 +2016,280 @@ function showMessage(message, type = 'info') {
     }, 3000);
 }
 
+
+// ========== 統計子分頁切換 ==========
+
+let currentStatsTab = 'kitchen'; // 'kitchen' | 'floor'
+
+function switchStatsTab(tabName) {
+    currentStatsTab = tabName;
+
+    document.querySelectorAll('.stats-sub-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.stats-sub-tab[data-subtab="${tabName}"]`).classList.add('active');
+
+    document.querySelectorAll('.stats-sub-content').forEach(c => c.style.display = 'none');
+    document.getElementById(`stats-${tabName}`).style.display = 'block';
+}
+
+// ========== 統計載入入口 ==========
+
+
+
+function previousMonth() {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    updateMonthDisplay();
+    loadMonthlyStats();
+    loadMonthlyShifts();
+    loadShiftDistribution();
+}
+
+function nextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    updateMonthDisplay();
+    loadMonthlyStats();
+    loadMonthlyShifts();
+    loadShiftDistribution();
+}
+
+function goToToday() {
+    const today = new Date();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    updateMonthDisplay();
+    loadMonthlyStats();
+    loadMonthlyShifts();
+    loadShiftDistribution();
+}
+
+// ========== 月度統計卡片 ==========
+
+
+
+function displayMonthlyStatsKitchen(shifts) {
+    const statsGrid = document.getElementById('stats-grid-kitchen');
+    if (!statsGrid) return;
+
+    const kitchenShifts = shifts.filter(s => s.shiftType.startsWith('廚房'));
+
+    const stats = { total: kitchenShifts.length };
+    ['廚房A班','廚房B班','廚房C班','廚房D班','廚房E班',
+     '廚房F班','廚房G班','廚房H班','廚房I班'].forEach(t => {
+        stats[t] = kitchenShifts.filter(s => s.shiftType === t).length;
+    });
+
+    statsGrid.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-label">廚房總排班</div>
+            <div class="stat-value" style="color:#ff9800;">${stats.total}</div>
+        </div>
+        ${['廚房A班','廚房B班','廚房C班','廚房D班','廚房E班',
+           '廚房F班','廚房G班','廚房H班','廚房I班'].map(type => `
+        <div class="stat-card">
+            <div class="stat-label">${type}</div>
+            <div class="stat-value" style="color:#ff9800;">${stats[type]}</div>
+        </div>`).join('')}
+    `;
+}
+
+function displayMonthlyStatsFloor(shifts) {
+    const statsGrid = document.getElementById('stats-grid-floor');
+    if (!statsGrid) return;
+
+    const floorShifts = shifts.filter(s => s.shiftType.startsWith('外場'));
+
+    const stats = { total: floorShifts.length };
+    ['外場A1班','外場A2班','外場A3班','外場A4班',
+     '外場B1班','外場B2班','外場B3班','外場B4班'].forEach(t => {
+        stats[t] = floorShifts.filter(s => s.shiftType === t).length;
+    });
+
+    statsGrid.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-label">外場總排班</div>
+            <div class="stat-value" style="color:#2196f3;">${stats.total}</div>
+        </div>
+        ${['外場A1班','外場A2班','外場A3班','外場A4班',
+           '外場B1班','外場B2班','外場B3班','外場B4班'].map(type => `
+        <div class="stat-card">
+            <div class="stat-label">${type}</div>
+            <div class="stat-value" style="color:#2196f3;">${stats[type]}</div>
+        </div>`).join('')}
+    `;
+}
+
+// ========== 月曆（廚房 / 外場各自過濾） ==========
+
+
+function displayMonthCalendar(shifts, gridId) {
+    const calendarGrid = document.getElementById(gridId);
+    if (!calendarGrid) return;
+
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+
+    const todayStr = formatDateYMD(new Date());
+    let html = '';
+    let dayCounter = 1;
+    let nextMonthDay = 1;
+    const totalCells = Math.ceil((daysInMonth + startingDayOfWeek) / 7) * 7;
+
+    for (let i = 0; i < totalCells; i++) {
+        let dateStr = '', dayNumber = '', otherMonthClass = '', isToday = false;
+
+        if (i < startingDayOfWeek) {
+            dayNumber = prevMonthLastDay - startingDayOfWeek + i + 1;
+            otherMonthClass = 'other-month';
+            const pm = currentMonth === 0 ? 11 : currentMonth - 1;
+            const py = currentMonth === 0 ? currentYear - 1 : currentYear;
+            dateStr = `${py}-${String(pm+1).padStart(2,'0')}-${String(dayNumber).padStart(2,'0')}`;
+        } else if (dayCounter <= daysInMonth) {
+            dayNumber = dayCounter;
+            dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(dayNumber).padStart(2,'0')}`;
+            isToday = dateStr === todayStr;
+            dayCounter++;
+        } else {
+            dayNumber = nextMonthDay;
+            otherMonthClass = 'other-month';
+            const nm = currentMonth === 11 ? 0 : currentMonth + 1;
+            const ny = currentMonth === 11 ? currentYear + 1 : currentYear;
+            dateStr = `${ny}-${String(nm+1).padStart(2,'0')}-${String(dayNumber).padStart(2,'0')}`;
+            nextMonthDay++;
+        }
+
+        const dayShifts = shifts.filter(s => formatDateYMD(new Date(s.date)) === dateStr);
+        const hasShifts = dayShifts.length > 0;
+
+        html += `
+            <div class="calendar-day ${otherMonthClass} ${isToday ? 'today' : ''} ${hasShifts ? 'has-shifts' : ''}">
+                <div class="day-number">${dayNumber}</div>
+                <div class="day-shifts">
+                    ${dayShifts.slice(0, 10).map(shift => {
+                        const s = formatTimeOnly(shift.startTime);
+                        const e = formatTimeOnly(shift.endTime);
+                        return `
+                        <div class="shift-item-mini ${getShiftClass(shift.shiftType)}"
+                             onclick="showShiftDetail('${shift.shiftId}')"
+                             title="${shift.employeeName} - ${shift.shiftType} (${s}-${e})">
+                            <div class="shift-item-name">${shift.employeeName}</div>
+                            <div class="shift-item-time">${s}-${e}</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+                ${dayShifts.length > 3 ? `<div class="shift-count">+${dayShifts.length - 3}</div>` : ''}
+            </div>`;
+    }
+
+    calendarGrid.innerHTML = html;
+}
+
+// ========== 班別分布（廚房 / 外場分開） ==========
+
+async function loadShiftDistribution() {
+    displayShiftDistributionKitchen(allMonthShifts.filter(s => s.shiftType.startsWith('廚房')));
+    displayShiftDistributionFloor(allMonthShifts.filter(s => s.shiftType.startsWith('外場')));
+}
+
+function displayShiftDistributionKitchen(shifts) {
+    const container = document.getElementById('shift-distribution-kitchen');
+    if (!container) return;
+    if (shifts.length === 0) { container.innerHTML = ''; return; }
+
+    const employeeStats = {};
+    const typeStats = {
+        '廚房A班':0,'廚房B班':0,'廚房C班':0,'廚房D班':0,'廚房E班':0,
+        '廚房F班':0,'廚房G班':0,'廚房H班':0,'廚房I班':0
+    };
+    const typeColors = {
+        '廚房A班':'#ff9800','廚房B班':'#fb8c00','廚房C班':'#f57c00',
+        '廚房D班':'#ef6c00','廚房E班':'#e65100','廚房F班':'#bf360c',
+        '廚房G班':'#ffd54f','廚房H班':'#ffb300','廚房I班':'#ff6f00'
+    };
+
+    shifts.forEach(s => {
+        employeeStats[s.employeeName] = (employeeStats[s.employeeName] || 0) + 1;
+        if (s.shiftType in typeStats) typeStats[s.shiftType]++;
+    });
+
+    container.innerHTML = buildDistributionHTML(
+        employeeStats, typeStats, typeColors, '#ff9800', '廚房員工排班分布', '廚房班別分布'
+    );
+}
+
+function displayShiftDistributionFloor(shifts) {
+    const container = document.getElementById('shift-distribution-floor');
+    if (!container) return;
+    if (shifts.length === 0) { container.innerHTML = ''; return; }
+
+    const employeeStats = {};
+    const typeStats = {
+        '外場A1班':0,'外場A2班':0,'外場A3班':0,'外場A4班':0,
+        '外場B1班':0,'外場B2班':0,'外場B3班':0,'外場B4班':0
+    };
+    const typeColors = {
+        '外場A1班':'#42a5f5','外場A2班':'#2196f3','外場A3班':'#1e88e5','外場A4班':'#1565c0',
+        '外場B1班':'#64b5f6','外場B2班':'#1976d2','外場B3班':'#0d47a1','外場B4班':'#0a3880'
+    };
+
+    shifts.forEach(s => {
+        employeeStats[s.employeeName] = (employeeStats[s.employeeName] || 0) + 1;
+        if (s.shiftType in typeStats) typeStats[s.shiftType]++;
+    });
+
+    container.innerHTML = buildDistributionHTML(
+        employeeStats, typeStats, typeColors, '#2196f3', '外場員工排班分布', '外場班別分布'
+    );
+}
+
+// 共用長條圖產生器
+function buildDistributionHTML(employeeStats, typeStats, typeColors, barColor, empTitle, typeTitle) {
+    const maxCount = Math.max(...Object.values(employeeStats), 1);
+    const sortedEmployees = Object.entries(employeeStats).sort((a,b) => b[1]-a[1]).slice(0,15);
+    const total = Object.values(typeStats).reduce((a,b) => a+b, 0);
+
+    const empBars = sortedEmployees.map(([name, count]) => {
+        const pct = (count / maxCount * 100).toFixed(0);
+        return `
+            <div class="distribution-bar-item">
+                <div class="distribution-bar-label">${name}</div>
+                <div class="distribution-bar-container">
+                    <div class="distribution-bar" style="width:${pct}%; background:linear-gradient(90deg,${barColor},${barColor}88);">
+                        <div class="distribution-bar-value">${count} 班</div>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+
+    const typeCards = Object.entries(typeStats).map(([type, count]) => {
+        const pct = total > 0 ? (count / total * 100).toFixed(1) : 0;
+        const color = typeColors[type] || '#9e9e9e';
+        return `
+            <div class="shift-type-stat">
+                <div class="shift-type-stat-header">
+                    <span class="shift-type-label ${getShiftClass(type)}">${type}</span>
+                    <span class="shift-type-count">${count}</span>
+                </div>
+                <div class="shift-type-bar-container">
+                    <div class="shift-type-bar" style="width:${pct}%; background:${color};"></div>
+                </div>
+                <div class="shift-type-percentage">${pct}%</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="distribution-section">
+            <h3 class="distribution-title">${empTitle}</h3>
+            <div class="distribution-bars">${empBars}</div>
+        </div>
+        <div class="distribution-section">
+            <h3 class="distribution-title">${typeTitle}</h3>
+            <div class="shift-type-distribution">${typeCards}</div>
+        </div>`;
+}
 function goBack() {
     window.history.back();
 }
