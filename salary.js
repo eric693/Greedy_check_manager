@@ -1584,7 +1584,7 @@ function exportPaySlip(salaryJson) {
         ['國定假日出勤薪資', salary['國定假日出勤薪資']],
         ['未休假補薪',       salary['未休假補薪']],
         ['月休補薪',         salary['月休補薪']],
-    ].filter(r => parseFloat(r[1]) > 0);
+    ];
  
     const deductionRows = [
         ['勞保費',     salary['勞保費']],
@@ -1599,7 +1599,7 @@ function exportPaySlip(salaryJson) {
         ['團保費用',   salary['團保費用']],
         ['其他扣款1',  salary['其他扣款1']],
         ['其他扣款2',  salary['其他扣款2']],
-    ].filter(r => parseFloat(r[1]) > 0);
+    ];
  
     /* ── 補齊兩欄列數 ── */
     const maxRows = Math.max(earningsRows.length, deductionRows.length);
@@ -1611,12 +1611,13 @@ function exportPaySlip(salaryJson) {
         return `
             <tr>
                 <td class="lbl">${e[0]}</td>
-                <td class="amt earn">${e[0] ? fmt(e[1]) : ''}</td>
+                <td class="amt earn">${fmt(e[1])}</td>
                 <td class="sep"></td>
                 <td class="lbl">${d[0]}</td>
-                <td class="amt deduct">${d[0] ? fmt(d[1]) : ''}</td>
+                <td class="amt deduct">${fmt(d[1])}</td>
             </tr>`;
     }).join('');
+ 
  
     /* ── 銀行資訊 ── */
     let bankCode = salary['銀行代碼'];
