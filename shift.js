@@ -822,8 +822,6 @@ async function addShift() {
         if (data.ok) {
             showMessage(t('SHIFT_ADD_SUCCESS'), 'success');
             resetForm();
-            switchTab('view');
-            loadShifts();
         } else {
             showMessage(data.msg || t('SHIFT_ADD_FAILED'), 'error');
         }
@@ -898,8 +896,6 @@ async function updateShift(shiftId) {
         if (data.ok) {
             showMessage(t('SHIFT_UPDATE_SUCCESS'), 'success');
             resetForm();
-            switchTab('view');
-            loadShifts();
         } else {
             showMessage(data.msg || t('SHIFT_UPDATE_FAILED'), 'error');
         }
