@@ -819,7 +819,7 @@
                     設定基本薪資與所有津貼、扣款項目
                 </p>
 
-                <form id="salary-config-form">
+                <form id="salary-config-form" onsubmit="return false;">
                     <!-- 基本資訊 -->
                     <div class="feature-box">
                         <h3 class="text-lg font-semibold mb-4" data-i18n="SALARY_BASIC_INFO">基本資訊</h3>
@@ -1395,7 +1395,7 @@
             if (filterYearMonthList) filterYearMonthList.value = currentMonth;
             
             if (typeof initSalaryTab === 'function') {
-                initSalaryTab();
+                await initSalaryTab();
             }
             
             bindAutoCalculation();
